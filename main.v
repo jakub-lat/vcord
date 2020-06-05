@@ -5,7 +5,7 @@ import discord.models
 
 fn main () {
 	mut c := vcord.client(&vcord.Config{
-		token: 'NzEyNzE3Mjk2ODcwODgzMzU4.XtoqZQ.YOuNOj-bI6kwKr1AtJZ2fkxm9qI'
+		token: ''
 	})
 
 	c.on('on_ready', on_ready)
