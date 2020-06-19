@@ -53,7 +53,7 @@ fn on_message(mut b Bot, c &vcord.Client, msg &vcord.Message) {
 				})
 			}
 			else {
-				msg.channel.send('chciałbys', vcord.MessageOpts{})
+				msg.channel.send('no', vcord.MessageOpts{})
 			}
 		}
 	}
