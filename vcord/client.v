@@ -1,152 +1,86 @@
 module vcord
-import discord.models
-import net.websocket
-import eventbus
-import time
+
 import json
 
 pub struct Client {
-	gateway				string
 pub:
-	token				string
-pub mut:
-	events				&eventbus.EventBus
-	op_events			&eventbus.EventBus
+	token string
 mut:
-	ws					&websocket.Client
-	session_id			string
-	sequence			int
-	heartbeat_interval	int
-	last_heartbeat		u64
+	gw Gateway [skip]
+	guilds map[string]Guild
+	unavaliable_guilds map[string]UnavailableGuild
+	evt EventEmitter [skip]
+	logger &Logger [skip]
 }
 
 pub struct Config {
 	token	string
+	log_level LogLevel
 }
 
 pub fn client(c Config) &Client {
-	gw := 'wss://gateway.discord.gg:443/?encoding=json&v=6'
+	mut l := new_logger(c.log_level)
 	mut d := &Client {
-		gateway: gw
+		gw: gateway(c, mut l)
 		token: c.token
-		ws: websocket.new(gw)
-		events: eventbus.new()
-		op_events: eventbus.new()
+		logger: l
 	}
+	d.evt = new_event_emitter(d)
 
-	d.ws.subscriber.subscribe_method('on_open', on_open, d)
-	d.ws.subscriber.subscribe_method('on_message', on_message, d)
-	d.ws.subscriber.subscribe_method('on_error', on_error, d)
-	d.ws.subscriber.subscribe_method('on_close', on_close, d)
-
-	d.op_events.subscriber.subscribe_method('on_hello', on_hello, d)
-	d.op_events.subscriber.subscribe_method('on_dispatch', on_dispatch, d)
-
-	d.events.subscriber.subscribe_method('on_ready', on_ready, d)
-
+	d.gw.events.subscriber.subscribe_method('on_dispatch', dispatch, d)
+	d.gw.events.subscriber.subscribe_method('on_ready', ready, d)
 	return d
 }
 
-pub fn (mut d Client) connect () {
-	println('connecting...')
-	d.ws.connect()
-	//ws.read()
-	go d.ws.listen()
-	for true {
-		time.sleep_ms(1)
-		if time.now().unix - d.last_heartbeat > d.heartbeat_interval {
-			heartbeat := HeartbeatPacket {
-				op: Op.heartbeat,
-				d: d.sequence
-			}.encode()
-			println("HEARTBEAT $heartbeat")
-			d.ws.write(heartbeat.str, heartbeat.len, .text_frame)
-			d.last_heartbeat = time.now().unix
-		}
+fn ready(mut c Client, _ Gateway, packet &DiscordPacket) {
+	r := decode_ready_packet(packet.d) or { return }
+	for g in r.guilds {
+		c.unavaliable_guilds[g.id] = g
 	}
+	c.evt.emit('ready', &r)
+	c.logger.info('bot ready')
 }
 
-pub fn (mut d Client) on(name string, handler eventbus.EventHandlerFn) {
-	d.events.subscriber.subscribe(name, handler)
-}
-
-pub fn (mut d Client) subscribe_method(name string, handler eventbus.EventHandlerFn, receiver voidptr) {
-	d.events.subscriber.subscribe_method(name, handler, receiver)
-}
-
-fn on_open(mut d Client, ws websocket.Client, _ voidptr) {
-	println('websocket opened.')
-}
-
-fn on_message(mut d Client, ws websocket.Client, msg &websocket.Message) {
-	match msg.opcode {
-		.text_frame {
-			packet := decode_packet(string(byteptr(msg.payload))) or {
-				println(err)
-				return
-			}
-			d.sequence = packet.sequence
-			match packet.op {
-				.dispatch { d.op_events.publish('on_dispatch', &ws, &packet) }
-				.hello { d.op_events.publish('on_hello', &ws, &packet) }
-				else {}
-			}
-		}
-		else {
-			println("unhandled opcode")
-		}
-	}
-}
-
-fn on_hello(mut d Client, ws websocket.Client, packet &DiscordPacket) {
-	hello_data := decode_hello_packet(packet.d) or {
-		println(err)
-		return
-	}
-	d.heartbeat_interval = hello_data.heartbeat_interval/1000
-	d.last_heartbeat = time.now().unix
-	identify_packet := IdentifyPacket{
-		token: d.token,
-		properties: IdentifyPacketProperties{
-			os: 'linux',
-			browser: 'viscord',
-			device: 'viscord'
-		},
-		shard: [0,1],
-		guild_subscriptions: true
-	}
-	encoded := identify_packet.encode()
-	//println(encoded)
-	d.ws.write(encoded.str, encoded.len, .text_frame)
-	
-}
-
-fn on_ready(mut d Client, ws websocket.Client, packet &DiscordPacket) {
-	ready_packet := decode_ready_packet(packet.d) or { return }
-	d.session_id = ready_packet.session_id
-}
-
-fn on_dispatch(mut d Client, ws websocket.Client, packet &DiscordPacket) {
+fn dispatch(mut c Client, g Gateway, packet &DiscordPacket) {
 	event := packet.event.to_lower()
-	pkt := match event {
-		'message' {
-			json.decode(models.Message, packet.d) or {
-				println('failed to parse message')
-				return
+	match event {
+		'ready' {
+			ready(mut c, g, packet)
+		}
+		'message_create' {
+			mut msg := json.decode(Message, packet.d) or { return }
+			msg.member.user = msg.author
+			msg.inject(c)
+			c.evt.emit('message', &msg)
+		}
+		'guild_create' {
+			mut guild := json.decode(Guild, packet.d) or { return }
+			guild.inject(c)
+			c.guilds[guild.id] = guild
+			if guild.id in c.unavaliable_guilds {
+				c.unavaliable_guilds.delete(guild.id)
+				println('guild available: $guild.name - $guild.channels.len channels')
+			} else {
+				c.evt.emit(event, &c.guilds[guild.id])
 			}
 		}
 		else {
-			packet
+			c.evt.emit(event, &packet)
 		}
 	}
-	d.events.publish('on_$event', d, pkt)
 }
 
-fn on_close(mut d Client, ws websocket.Client, _ voidptr) {
-	println('websocket closed.')
+pub fn (c &Client) connect() {
+	c.gw.connect()
 }
 
-fn on_error(mut d Client, ws websocket.Client, err string) {
-	println('we have an error.')
-	println(err)
+pub fn (mut c Client) on(receiver voidptr, name string, handler fn(voidptr, voidptr, voidptr)) {
+	c.evt.subscribe(receiver, name, handler)
+}
+
+pub fn (c &Client) get_guild(id string) ?&Guild {
+	if id in c.guilds {
+		return &c.guilds[id]
+	}
+	return none
 }

@@ -1,0 +1,130 @@
+package sharding
+
+import (
+	"errors"
+	"time"
+	"vcord/gateway"
+	"vcord/interfaces"
+	"vcord/models"
+	gateway2 "vcord/models/gateway"
+	restG "vcord/rest/gateway"
+)
+
+const (
+	WAITING ShardStatus = iota
+	CONNECTED
+	DISCONNECTED
+	RECONNECTING
+)
+
+type ShardingConfig struct {
+	Shards      []uint16
+	ShardsCount uint16
+	AutoCheck   bool
+}
+
+type ShardingManager struct {
+	Config         *ShardingConfig
+	Shards         map[uint16]*Shard
+	EventsHandlers map[string][]gateway2.HandlerData
+	Logger         interfaces.Logger
+	BotSession     models.Session
+}
+
+type ShardStatus = int
+
+type Shard struct {
+	ID      uint16
+	Gateway interfaces.IGateway
+	Manager *ShardingManager
+	Status  ShardStatus
+}
+
+func NewManager(config *ShardingConfig, logger interfaces.Logger, sess models.Session) (*ShardingManager, error) {
+	return &ShardingManager{
+		Shards:         make(map[uint16]*Shard),
+		EventsHandlers: make(map[string][]gateway2.HandlerData),
+		Config:         config,
+		Logger:         logger,
+		BotSession:     sess,
+	}, nil
+}
+
+func NewShard(id uint16, manager *ShardingManager) *Shard {
+	return &Shard{
+		ID:      id,
+		Status:  WAITING,
+		Manager: manager,
+	}
+}
+
+func (s *Shard) GetID() uint16 {
+	return s.ID
+}
+
+func (s *Shard) Spawn() error {
+	data, err := restG.GetGatewayInfo(s.Manager.BotSession.Token())
+	if err != nil {
+		return err
+	}
+
+	if int(data.SessionInfo.Total) <= len(s.Manager.Shards) {
+		return errors.New("Max number of shards reached")
+	}
+
+	s.Gateway = gateway.NewGateway(s, s.Manager.Logger, s.Manager.BotSession)
+	err = s.Gateway.Connect(data.Url)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Shard) SetStatus(status uint8) error {
+	s.Status = ShardStatus(status)
+	return nil
+}
+
+func (sm *ShardingManager) SpawnShards() {
+	for i := uint16(0); i < sm.Config.ShardsCount; i++ {
+		shard := NewShard(i, sm)
+		err := shard.Spawn()
+		if err != nil {
+			sm.Logger.Error(err.Error())
+		}
+		sm.Shards[i] = shard
+		if i < sm.Config.ShardsCount-1 {
+			time.Sleep(5 * time.Second)
+		}
+	}
+	go sm.CheckLoop()
+}
+
+func (sm *ShardingManager) CheckLoop() {
+	for {
+		queue := sm.GetWaiting()
+		for _, id := range queue {
+			shard, ok := sm.Shards[id]
+			if !ok {
+				continue
+			}
+			shard.Status = RECONNECTING
+			err := shard.Spawn()
+			if err != nil {
+				shard.Status = WAITING
+				sm.Logger.Error(err.Error())
+			}
+			time.Sleep(5 * time.Second)
+		}
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func (sm *ShardingManager) GetWaiting() (queue []uint16) {
+	for _, v := range sm.Shards {
+		if v.Status != CONNECTED {
+			queue = append(queue, v.ID)
+		}
+	}
+	return
+}

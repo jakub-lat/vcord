@@ -1,6 +1,5 @@
 module vcord
 import json
-import discord
 
 enum Op {
 	dispatch
@@ -44,7 +43,7 @@ struct IdentifyPacket {
 	compress			bool = false
 	large_threshold		int = 250
 	shard				[]int = [0, 1]
-	presence			discord.Status
+	presence			Status
 	guild_subscriptions	bool = true
 }
 struct OutboundIdentifyPacket {
@@ -61,7 +60,7 @@ pub fn (p IdentifyPacket) encode() string {
 struct ReadyPacket {
 	v					int
 	private_channels	[]string
-	guilds				[]discord.UnavailableGuild
+	guilds				[]UnavailableGuild
 	session_id			string
 	shard				[]int
 }
@@ -76,11 +75,6 @@ struct HeartbeatPacket {
 }
 pub fn (p HeartbeatPacket) encode() string {
 	return json.encode(p)
-}
-
-pub fn decode_message_packet(s string) ?discord.Message {
-	packet := json.decode(discord.Message, s) or { return error(err) }
-	return packet
 }
 
 pub fn decode_packet(s string) ?DiscordPacket {
