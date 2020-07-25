@@ -1,4 +1,4 @@
-module models
+module vcord
 
 pub struct User {
 pub:

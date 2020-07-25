@@ -1,4 +1,4 @@
-module models
+module vcord
 
 type Color int
 

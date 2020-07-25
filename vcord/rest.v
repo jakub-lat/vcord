@@ -3,33 +3,28 @@ module vcord
 import net.http
 import json
 
-import vcord.models
-
 struct RestMessage {
 	content string
 	tts bool = false
 }
 struct RestMessageEmbed {
 	content	string
-	embd    models.Embed [json:"embed"]
+	embd    Embed [json:"embed"]
 	tts bool = false
 }
-pub fn (c &Client) send_message(cid string, content string, msg models.MessageOpts) ?Message {
-	println('sending message to $cid')
+pub fn (c &Client) send_message(cid string, content string, msg MessageOpts) ?Message {
 	mut s := ""
 	if msg.embd == voidptr(0) {
 		s = json.encode(RestMessage{
 			content: content
 			tts: msg.tts
 		})
-		println(s)
 	} else {
 		s = json.encode(RestMessageEmbed{
 			content: content
 			embd: msg.embd
 			tts: msg.tts
 		})
-		println(s)
 	}
 	r := c.post("channels/${cid}/messages", s) or {
 		return error('request error')
@@ -56,61 +51,36 @@ pub fn (c &Client) get_user(id string) ?User {
 }
 
 fn (c &Client) get(p string) ?http.Response {
+	return c.req("get", p, "")
+}
+
+fn (c &Client) post(p string, data string) ?http.Response {
+	return c.req("post", p, data)
+}
+
+fn (c &Client) delete(p string) ?http.Response {
+	return c.req("delete", p, "")
+}
+
+fn (c &Client) put(p string, data string) ?http.Response {
+	return c.req("put", p, "")
+}
+
+fn (c &Client) req(method string, p string, data string) ?http.Response {
 	headers := {
 		"authorization": "Bot $c.token",
-		"content-type": "application/json"
+		"content-type": 'application/json'
 	}
-
 	res := http.fetch("https://discordapp.com/api/v6/$p", http.FetchConfig{
-		method: "get",
-		headers: headers
+		method: method,
+		headers: headers,
+		data: data
 	})?
 
 	if res.status_code < 200 || res.status_code >= 300 {
 		c.logger.error('api responded with status code $res.status_code')
 		c.logger.error(res.text)
 	}
-	
-	return res
-}
 
-fn (c &Client) post(p string, data string) ?http.Response {
-	headers := {
-		"authorization": "Bot $c.token",
-		"content-type": "application/json"
-	}
-
-	res := http.fetch("https://discordapp.com/api/v6/$p", http.FetchConfig{
-		method: "post",
-		headers: headers,
-		data: data
-	})?
-	return res
-}
-
-fn (c &Client) delete(p string) ?http.Response {
-	headers := {
-		"authorization": "Bot $c.token",
-		"content-type": 'application/json'
-	}
-
-	res := http.fetch("https://discordapp.com/api/v6/$p", http.FetchConfig{
-		method: "delete",
-		headers: headers
-	})?
-	return res
-}
-
-fn (c &Client) put(p string, data string) ?http.Response {
-	headers := {
-		"authorization": "Bot $c.token",
-		"content-type": 'application/json'
-	}
-
-	res := http.fetch("https://discordapp.com/api/v6/$p", http.FetchConfig{
-		method: "put",
-		headers: headers,
-		data: data
-	})?
 	return res
 }

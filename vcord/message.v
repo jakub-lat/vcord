@@ -1,6 +1,4 @@
-module models
-
-import vcord { Client }
+module vcord
 
 pub struct MessageOpts {
 pub:
