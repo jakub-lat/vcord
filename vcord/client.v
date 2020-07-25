@@ -1,15 +1,18 @@
 module vcord
 
 import json
+import vcord.models
+import vcord.gateway
+import vcord.utils
 
 pub struct Client {
 pub:
 	token string
 mut:
 	gw Gateway [skip]
-	guilds map[string]Guild
-	unavaliable_guilds map[string]UnavailableGuild
-	evt EventEmitter [skip]
+	guilds map[string]models.Guild
+	unavaliable_guilds map[string]models.UnavailableGuild
+	evt utils.EventEmitter [skip]
 	logger &Logger [skip]
 }
 
@@ -19,7 +22,7 @@ pub struct Config {
 }
 
 pub fn client(c Config) &Client {
-	mut l := new_logger(c.log_level)
+	mut l := utils.new_logger(c.log_level)
 	mut d := &Client {
 		gw: gateway(c, mut l)
 		token: c.token
@@ -32,34 +35,33 @@ pub fn client(c Config) &Client {
 	return d
 }
 
-fn ready(mut c Client, _ Gateway, packet &DiscordPacket) {
+fn ready(mut c Client, _ gateway.Gateway, packet &gateway.DiscordPacket) {
 	r := decode_ready_packet(packet.d) or { return }
-	for g in r.guilds {
+	for g in r.guilds {	
 		c.unavaliable_guilds[g.id] = g
 	}
 	c.evt.emit('ready', &r)
 	c.logger.info('bot ready')
 }
 
-fn dispatch(mut c Client, g Gateway, packet &DiscordPacket) {
+fn dispatch(mut c Client, g gateway.Gateway, packet &gateway.DiscordPacket) {
 	event := packet.event.to_lower()
 	match event {
 		'ready' {
 			ready(mut c, g, packet)
 		}
 		'message_create' {
-			mut msg := json.decode(Message, packet.d) or { return }
+			mut msg := json.decode(models.Message, packet.d) or { return }
 			msg.member.user = msg.author
 			msg.inject(c)
 			c.evt.emit('message', &msg)
 		}
 		'guild_create' {
-			mut guild := json.decode(Guild, packet.d) or { return }
+			mut guild := json.decode(models.Guild, packet.d) or { return }
 			guild.inject(c)
 			c.guilds[guild.id] = guild
 			if guild.id in c.unavaliable_guilds {
 				c.unavaliable_guilds.delete(guild.id)
-				println('guild available: $guild.name - $guild.channels.len channels')
 			} else {
 				c.evt.emit(event, &c.guilds[guild.id])
 			}
@@ -70,7 +72,7 @@ fn dispatch(mut c Client, g Gateway, packet &DiscordPacket) {
 	}
 }
 
-pub fn (c &Client) connect() {
+pub fn (mut c Client) connect() {
 	c.gw.connect()
 }
 
@@ -78,9 +80,9 @@ pub fn (mut c Client) on(receiver voidptr, name string, handler fn(voidptr, void
 	c.evt.subscribe(receiver, name, handler)
 }
 
-pub fn (c &Client) get_guild(id string) ?&Guild {
+pub fn (c Client) get_guild(id string) ?Guild {
 	if id in c.guilds {
-		return &c.guilds[id]
+		return c.guilds[id]
 	}
 	return none
 }

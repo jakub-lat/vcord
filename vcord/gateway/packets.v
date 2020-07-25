@@ -1,4 +1,4 @@
-module vcord
+module gateway
 import json
 
 enum Op {

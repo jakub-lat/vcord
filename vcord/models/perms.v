@@ -1,4 +1,4 @@
-module vcord
+module models
 
 pub enum Perm {
 	create_instant_invite = 1

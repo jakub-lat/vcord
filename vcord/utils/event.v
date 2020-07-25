@@ -1,4 +1,4 @@
-module vcord
+module utils
 
 pub struct Event {
 	name string

@@ -1,6 +1,6 @@
-module vcord
+module models
 
-import json
+import vcord
 
 pub enum MessageFlags {
 	crossposted
@@ -39,31 +39,20 @@ mut:
 	c 					&Client [skip]
 pub mut:
 	member				GuildMember
-	guild 				&Guild [skip]
-	channel				&Channel [skip]
+	guild 				Guild [skip]
+	channel				Channel [skip]
 }
 
-fn (mut m Message) inject(c &Client) {
+fn (mut m Message) inject(mut c vcord.Client) {
 	m.c = c
 	g := m.c.get_guild(m.guild_id) or {
 		c.logger.error('guild not available')
 		return
 	}
 	m.guild = g
-	println('msg guild: $m.guild.name')
 	chn := m.guild.get_channel(m.channel_id) or {
 		c.logger.error('channel not found')
 		return
 	}
 	m.channel = chn
-	//printmsg(m)
-	//m.print()
-}
-
-fn printmsg(m &Message) {
-	println('channel2: $m.channel.name')
-}
-
-fn (m &Message) print() {
-	println('channel1: $m.channel.name')
 }

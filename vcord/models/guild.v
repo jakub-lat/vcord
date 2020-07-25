@@ -1,6 +1,7 @@
-module vcord
+module models
 
 import json
+import vcord
 
 struct Guild {
 pub:
@@ -22,26 +23,26 @@ pub:
 	unavailable	bool
 }
 
-fn (mut g Guild) inject(c &Client) {
+fn (mut g Guild) inject(c &vcord.Client) {
 	g.c = c
 	for i, _ in g.channels {
 		g.channels[i].inject(c)
 	}
 }
 
-pub fn (g &Guild) get_channel(id string) ?&Channel {
+pub fn (g Guild) get_channel(id string) ?Channel {
 	for chn in g.channels {
 		if chn.id == id {
-			return &chn
+			return chn
 		}
 	}
 	return none
 }
 
-pub fn (g &Guild) get_role(id string) ?&Role {
+pub fn (g Guild) get_role(id string) ?Role {
 	for r in g.roles {
 		if r.id == id {
-			return &r
+			return r
 		}
 	}
 	return none
@@ -55,6 +56,7 @@ pub fn (mut g Guild) get_member(id string) ?&GuildMember {
 		mut member := json.decode(GuildMember, r.text) or {return none}
 		member.guild_id = g.id
 		member.inject(g.c)
+		g.members[member.user.id] = member
 		return &member
 	}
 }

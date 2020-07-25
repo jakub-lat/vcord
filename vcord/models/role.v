@@ -1,8 +1,8 @@
-module vcord
+module models
 
 pub struct Role {
-permissions int
-color int
+	permissions int
+	color int
 pub:
 	id string
 	position int

@@ -1,4 +1,4 @@
-module vcord
+module models
 
 pub struct User {
 pub:
@@ -40,6 +40,6 @@ pub mut:
 	user 			User
 }
 
-fn (m &GuildMember) inject(c &Client) {
+fn (mut m GuildMember) inject(mut c Client) {
 	m.c = c
 }

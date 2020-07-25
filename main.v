@@ -1,14 +1,27 @@
 module main
 
+import os
+import json
+
 import vcord
+import vcord.models
 
 struct Bot {
 	prefix string
 }
 
+struct Config {token string}
+
 fn main () {
+
+	conf_file := os.read_file('config.json') or {
+		println('config.json not found!')
+		return
+	}
+	conf := json.decode(Config, conf_file)
+
 	mut c := vcord.client(&vcord.Config{
-		token: '<TOKEN>'
+		token: conf.token
 		log_level: .info
 	})
 	mut bot := Bot{
@@ -23,8 +36,7 @@ fn on_ready(mut b Bot, c &vcord.Client, _ voidptr) {
 	println('Bot is ready!')
 }
 
-fn on_message(mut b Bot, c &vcord.Client, msg &vcord.Message) {
-	println('received msg [main] - chn: $msg.channel.id')
+fn on_message(mut b Bot, c &vcord.Client, msg &models.Message) {
 	if msg.content.starts_with(b.prefix) {
 		raw_args := msg.content.to_lower().substr(b.prefix.len, msg.content.len).split(' ')
 		cmd := raw_args[0]
@@ -34,17 +46,17 @@ fn on_message(mut b Bot, c &vcord.Client, msg &vcord.Message) {
 		}
 		match cmd {
 			'ping' {
-				println('sending message to $msg.channel.id - $msg.channel.name')
+				println('channel: $msg.channel.id')
 				msg.channel.send('Pong!', vcord.MessageOpts{})
 			}
 			'user' {
 				mut u := &msg.member
 				println(u.user.tag())
 				msg.channel.send('', vcord.MessageOpts{
-					embd: &vcord.Embed{
+					embd: &models.Embed{
 						title: 'User info: ${u.user.tag()}'
 						fields: [
-							vcord.EmbedField{
+							models.EmbedField{
 								name: 'Nickname'
 								value: u.nick
 							}
