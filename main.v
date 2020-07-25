@@ -5,6 +5,7 @@ import json
 
 import vcord
 import vcord.config
+import vcord.models
 
 struct Bot {
 	prefix string
@@ -39,7 +40,7 @@ fn on_ready(mut b Bot, c &vcord.Client, _ voidptr) {
 	println('Bot is ready!')
 }
 
-fn on_message(mut b Bot, c &vcord.Client, msg &vcord.Message) {
+fn on_message(mut b Bot, c &vcord.Client, msg &models.Message) {
 	if msg.content.starts_with(b.prefix) {
 		raw_args := msg.content.to_lower().substr(b.prefix.len, msg.content.len).split(' ')
 		cmd := raw_args[0]
@@ -49,15 +50,15 @@ fn on_message(mut b Bot, c &vcord.Client, msg &vcord.Message) {
 		}
 		match cmd {
 			'ping' {
-				msg.channel.send('Pong!', vcord.MessageOpts{})
+				msg.channel.send('Pong!', models.MessageOpts{})
 			}
 			'user' {
 				mut u := &msg.member
-				msg.channel.send('', vcord.MessageOpts{
-					embd: &vcord.Embed{
+				msg.channel.send('', models.MessageOpts{
+					embd: &models.Embed{
 						title: 'User info: ${u.user.tag()}'
 						fields: [
-							vcord.EmbedField{
+							models.EmbedField{
 								name: 'Nickname'
 								value: "test"
 							}
@@ -66,7 +67,7 @@ fn on_message(mut b Bot, c &vcord.Client, msg &vcord.Message) {
 				})
 			}
 			else {
-				msg.channel.send('no', vcord.MessageOpts{})
+				msg.channel.send('no', models.MessageOpts{})
 			}
 		}
 	}

@@ -3,16 +3,19 @@ module vcord
 import json
 import vcord.utils
 import vcord.config
+import vcord.models
+import vcord.session
 
 pub struct Client {
 pub:
 	token string
 mut:
 	gw Gateway [skip]
-	guilds map[string]Guild
-	unavaliable_guilds map[string]UnavailableGuild
+	guilds map[string]models.Guild
+	unavaliable_guilds map[string]models.UnavailableGuild
 	evt utils.EventEmitter [skip]
 	logger &utils.Logger [skip]
+	ctx &session.Ctx [skip]
 }
 
 pub fn client(c config.Config) &Client {
@@ -21,6 +24,10 @@ pub fn client(c config.Config) &Client {
 		gw: new_gateway(c, mut l)
 		token: c.token
 		logger: l
+		ctx: &session.Ctx{
+			token: c.token
+			logger: l
+		}
 	}
 	d.evt = utils.new_event_emitter(d)
 
@@ -45,13 +52,17 @@ fn dispatch(mut c Client, g Gateway, packet &DiscordPacket) {
 			ready(mut c, g, packet)
 		}
 		'message_create' {
-			mut msg := json.decode(Message, packet.d) or { return }
+			mut msg := json.decode(models.Message, packet.d) or { return }
 			msg.member.user = msg.author
-			msg.inject(c)
+			guild := c.get_guild(msg.guild_id) or {
+				c.logger.error('guild not available')
+				return
+			}
+			msg.inject(guild)
 			c.evt.emit('message', &msg)
 		}
 		'guild_create' {
-			mut guild := json.decode(Guild, packet.d) or { return }
+			mut guild := json.decode(models.Guild, packet.d) or { return }
 			guild.inject(c)
 			c.guilds[guild.id] = guild
 			if guild.id in c.unavaliable_guilds {
@@ -74,7 +85,7 @@ pub fn (mut c Client) on(receiver voidptr, name string, handler fn(voidptr, void
 	c.evt.subscribe(receiver, name, handler)
 }
 
-pub fn (c Client) get_guild(id string) ?&Guild {
+pub fn (c Client) get_guild(id string) ?&models.Guild {
 	if id in c.guilds {
 		return &c.guilds[id]
 	}

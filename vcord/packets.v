@@ -1,6 +1,7 @@
 module vcord
 
 import json
+import vcord.models
 
 pub enum Op {
 	dispatch
@@ -47,7 +48,7 @@ pub:
 	compress			bool = false
 	large_threshold		int = 250
 	shard				[]int = [0, 1]
-	presence			Status
+	presence			models.Status
 	guild_subscriptions	bool = true
 }
 pub struct OutboundIdentifyPacket {
@@ -65,7 +66,7 @@ pub struct ReadyPacket {
 pub:
 	v					int
 	private_channels	[]string
-	guilds				[]UnavailableGuild
+	guilds				[]models.UnavailableGuild
 	session_id			string
 	shard				[]int
 }

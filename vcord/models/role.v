@@ -1,4 +1,4 @@
-module vcord
+module models
 
 pub struct Role {
 	permissions int

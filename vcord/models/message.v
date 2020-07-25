@@ -1,4 +1,6 @@
-module vcord
+module models
+
+import vcord.session
 
 pub struct MessageOpts {
 pub:
@@ -40,22 +42,17 @@ pub:
 	//message_reference	MessageReference
 	flags				MessageFlags
 mut:
-	c 					&Client [skip]
+	ctx 				&session.Ctx [skip]
 pub mut:
 	member				GuildMember
 	guild 				Guild [skip]
 	channel				Channel [skip]
 }
 
-pub fn (mut m Message) inject(mut c Client) {
-	m.c = c
-	g := m.c.get_guild(m.guild_id) or {
-		c.logger.error('guild not available')
-		return
-	}
+pub fn (mut m Message) inject(g &Guild) {
 	m.guild = g
 	chn := m.guild.get_channel(m.channel_id) or {
-		c.logger.error('channel not found')
+		m.ctx.logger.error('channel not found')
 		return
 	}
 	m.channel = chn

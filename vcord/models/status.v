@@ -1,4 +1,4 @@
-module vcord
+module models
 
 pub enum ActivityTypes {
 	game

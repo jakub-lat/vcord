@@ -1,6 +1,8 @@
-module vcord
+module models
 
 import json
+import vcord.session
+import vcord.rest
 
 struct Guild {
 pub:
@@ -9,7 +11,7 @@ pub:
 	icon string
 	member_count int
 mut:
-	c &Client [skip]
+	ctx &session.Ctx [skip]
 pub mut:
 	channels []Channel
 	roles []Role
@@ -22,10 +24,10 @@ pub:
 	unavailable	bool
 }
 
-pub fn (mut g Guild) inject(c &Client) {
-	g.c = c
+pub fn (mut g Guild) inject(ctx &session.Ctx) {
+	g.ctx = ctx
 	for i, _ in g.channels {
-		g.channels[i].inject(c)
+		g.channels[i].inject(ctx)
 	}
 }
 
@@ -51,21 +53,21 @@ pub fn (mut g Guild) get_member(id string) ?&GuildMember {
 	if id in g.members {
 		return &g.members[id]
 	} else {
-		r := g.c.get('guilds/$g.id/members/$id') or {return none}
+		r := rest.get(g.ctx, 'guilds/$g.id/members/$id') or {return none}
 		mut member := json.decode(GuildMember, r.text) or {return none}
 		member.guild_id = g.id
-		member.inject(g.c)
+		member.inject(g.ctx)
 		g.members[member.user.id] = member
 		return &member
 	}
 }
 
 pub fn (mut g Guild) fetch_all_members() {
-	r := g.c.get('guilds/$g.id/members') or {return}
+	r := rest.get(g.ctx, 'guilds/$g.id/members') or {return}
 	mut members := json.decode([]GuildMember, r.text) or {return}
 	for i, m in members {
 		members[i].guild_id = g.id
-		members[i].inject(g.c)
+		members[i].inject(g.ctx)
 		g.members[m.user.id] = m
 	}
 }
