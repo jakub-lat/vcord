@@ -1,7 +1,7 @@
 module models
 
 import json
-import vcord
+import vcord { Client }
 
 struct Channel {
 pub:
@@ -11,7 +11,7 @@ mut:
 	c &Client [skip]
 }
 
-fn (mut chn Channel) inject(c &vcord.Client) {
+fn (mut chn Channel) inject(c &Client) {
 	chn.c = c
 }
 

@@ -1,7 +1,8 @@
-module gateway
+module models
+
 import json
 
-enum Op {
+pub enum Op {
 	dispatch
 	heartbeat
 	identify
@@ -24,7 +25,8 @@ pub:
 	d			string	[raw]
 }
 
-struct HelloPacket {
+pub struct HelloPacket {
+pub:
 	heartbeat_interval int
 }
 pub fn decode_hello_packet(s string) ?HelloPacket {
@@ -32,12 +34,14 @@ pub fn decode_hello_packet(s string) ?HelloPacket {
 	return packet
 }
 
-struct IdentifyPacketProperties {
+pub struct IdentifyPacketProperties {
+pub:
 	os		string [json:"\$os"]
 	browser string [json:"\$browser"]
 	device	string [json:"\$device"]
 }
-struct IdentifyPacket {
+pub struct IdentifyPacket {
+pub:
 	token 				string
 	properties 			IdentifyPacketProperties
 	compress			bool = false
@@ -46,7 +50,7 @@ struct IdentifyPacket {
 	presence			Status
 	guild_subscriptions	bool = true
 }
-struct OutboundIdentifyPacket {
+pub struct OutboundIdentifyPacket {
 	op 	int
 	d	IdentifyPacket
 }
@@ -57,7 +61,8 @@ pub fn (p IdentifyPacket) encode() string {
 	})
 }
 
-struct ReadyPacket {
+pub struct ReadyPacket {
+pub:
 	v					int
 	private_channels	[]string
 	guilds				[]UnavailableGuild
@@ -69,7 +74,8 @@ pub fn decode_ready_packet(s string) ?ReadyPacket {
 	return packet
 }
 
-struct HeartbeatPacket {
+pub struct HeartbeatPacket {
+pub:
 	op 	int
 	d	int
 }

@@ -1,23 +1,20 @@
 module vcord
 
 import net.http
-//import discord
 import json
 
-pub struct MessageOpts {
-	embd    &Embed [json:"embed"] = voidptr(0)
-	tts     bool
-}
+import vcord.models
+
 struct RestMessage {
 	content string
 	tts bool = false
 }
 struct RestMessageEmbed {
 	content	string
-	embd    Embed [json:"embed"]
+	embd    models.Embed [json:"embed"]
 	tts bool = false
 }
-pub fn (c &Client) send_message(cid string, content string, msg MessageOpts) ?Message {
+pub fn (c &Client) send_message(cid string, content string, msg models.MessageOpts) ?Message {
 	println('sending message to $cid')
 	mut s := ""
 	if msg.embd == voidptr(0) {

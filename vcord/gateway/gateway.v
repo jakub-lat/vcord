@@ -4,6 +4,10 @@ import net.websocket
 import eventbus
 import time
 
+import vcord.config
+import vcord.utils
+import vcord.models
+
 pub struct Gateway {
 	gateway				string
 pub:
@@ -14,13 +18,13 @@ pub mut:
 	session_id			string
 mut:
 	ws					&websocket.Client
-	logger				&Logger
+	logger				&utils.Logger
 	sequence			int
 	heartbeat_interval	int
 	last_heartbeat		u64
 }
 
-pub fn gateway(c Config, mut l Logger) &Gateway {
+pub fn new_gateway(c config.Config, mut l utils.Logger) &Gateway {
 	url := 'wss://gateway.discord.gg:443/?encoding=json&v=6'
 	mut d := &Gateway {
 		gateway: url
@@ -51,8 +55,8 @@ pub fn (mut d Gateway) connect () {
 	for true {
 		time.sleep_ms(1)
 		if time.now().unix - d.last_heartbeat > d.heartbeat_interval {
-			heartbeat := HeartbeatPacket {
-				op: Op.heartbeat,
+			heartbeat := models.HeartbeatPacket {
+				op: models.Op.heartbeat
 				d: d.sequence
 			}.encode()
 			d.logger.debug('HEARTBEAT $heartbeat')
@@ -77,7 +81,7 @@ fn on_open(mut d Gateway, ws websocket.Client, _ voidptr) {
 fn on_message(mut d Gateway, ws websocket.Client, msg &websocket.Message) {
 	match msg.opcode {
 		.text_frame {
-			packet := decode_packet(string(byteptr(msg.payload))) or {
+			packet := models.decode_packet(string(byteptr(msg.payload))) or {
 				d.logger.error('cannot decode packet: \n$err')
 				return
 			}
@@ -94,17 +98,17 @@ fn on_message(mut d Gateway, ws websocket.Client, msg &websocket.Message) {
 	}
 }
 
-fn on_hello(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {
-	hello_data := decode_hello_packet(packet.d) or {
+fn on_hello(mut d Gateway, ws websocket.Client, packet &models.DiscordPacket) {
+	hello_data := models.decode_hello_packet(packet.d) or {
 		d.logger.warn('cannot decode packet:')
 		d.logger.warn(err)
 		return
 	}
 	d.heartbeat_interval = hello_data.heartbeat_interval/1000
 	d.last_heartbeat = time.now().unix
-	identify_packet := IdentifyPacket{
+	identify_packet := models.IdentifyPacket{
 		token: d.token,
-		properties: IdentifyPacketProperties{
+		properties: models.IdentifyPacketProperties{
 			os: 'linux',
 			browser: 'vcord',
 			device: 'vcord'
@@ -117,14 +121,14 @@ fn on_hello(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {
 	
 }
 
-fn on_ready(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {
+fn on_ready(mut d Gateway, ws websocket.Client, packet &models.DiscordPacket) {
 	
 }
 
-fn on_dispatch(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {	
+fn on_dispatch(mut d Gateway, ws websocket.Client, packet &models.DiscordPacket) {	
 	event := packet.event.to_lower()
 	if event == 'ready' {
-		ready_packet := decode_ready_packet(packet.d) or { return }
+		ready_packet := models.decode_ready_packet(packet.d) or { return }
 		d.session_id = ready_packet.session_id
 	}
 	d.events.publish('on_dispatch', d, packet)

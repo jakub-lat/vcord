@@ -1,7 +1,7 @@
 module models
 
 import json
-import vcord
+import vcord { Client }
 
 struct Guild {
 pub:
@@ -23,7 +23,7 @@ pub:
 	unavailable	bool
 }
 
-fn (mut g Guild) inject(c &vcord.Client) {
+pub fn (mut g Guild) inject(c &Client) {
 	g.c = c
 	for i, _ in g.channels {
 		g.channels[i].inject(c)

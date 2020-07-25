@@ -4,39 +4,35 @@ import json
 import vcord.models
 import vcord.gateway
 import vcord.utils
+import vcord.config
 
 pub struct Client {
 pub:
 	token string
 mut:
-	gw Gateway [skip]
+	gw gateway.Gateway [skip]
 	guilds map[string]models.Guild
 	unavaliable_guilds map[string]models.UnavailableGuild
 	evt utils.EventEmitter [skip]
-	logger &Logger [skip]
+	logger &utils.Logger [skip]
 }
 
-pub struct Config {
-	token	string
-	log_level LogLevel
-}
-
-pub fn client(c Config) &Client {
+pub fn client(c config.Config) &Client {
 	mut l := utils.new_logger(c.log_level)
 	mut d := &Client {
-		gw: gateway(c, mut l)
+		gw: gateway.new_gateway(c, mut l)
 		token: c.token
 		logger: l
 	}
-	d.evt = new_event_emitter(d)
+	d.evt = utils.new_event_emitter(d)
 
 	d.gw.events.subscriber.subscribe_method('on_dispatch', dispatch, d)
 	d.gw.events.subscriber.subscribe_method('on_ready', ready, d)
 	return d
 }
 
-fn ready(mut c Client, _ gateway.Gateway, packet &gateway.DiscordPacket) {
-	r := decode_ready_packet(packet.d) or { return }
+fn ready(mut c Client, _ gateway.Gateway, packet &models.DiscordPacket) {
+	r := models.decode_ready_packet(packet.d) or { return }
 	for g in r.guilds {	
 		c.unavaliable_guilds[g.id] = g
 	}
@@ -44,7 +40,7 @@ fn ready(mut c Client, _ gateway.Gateway, packet &gateway.DiscordPacket) {
 	c.logger.info('bot ready')
 }
 
-fn dispatch(mut c Client, g gateway.Gateway, packet &gateway.DiscordPacket) {
+fn dispatch(mut c Client, g gateway.Gateway, packet &models.DiscordPacket) {
 	event := packet.event.to_lower()
 	match event {
 		'ready' {
@@ -80,7 +76,7 @@ pub fn (mut c Client) on(receiver voidptr, name string, handler fn(voidptr, void
 	c.evt.subscribe(receiver, name, handler)
 }
 
-pub fn (c Client) get_guild(id string) ?Guild {
+pub fn (c Client) get_guild(id string) ?models.Guild {
 	if id in c.guilds {
 		return c.guilds[id]
 	}

@@ -5,6 +5,7 @@ import json
 
 import vcord
 import vcord.models
+import vcord.config
 
 struct Bot {
 	prefix string
@@ -14,13 +15,16 @@ struct Config {token string}
 
 fn main () {
 
-	conf_file := os.read_file('config.json') or {
+	conf_file := os.read_file('./config.json') or {
 		println('config.json not found!')
 		return
 	}
-	conf := json.decode(Config, conf_file)
+	conf := json.decode(Config, conf_file) or {
+		println('error while decoding config.json: $err')
+		return
+	}
 
-	mut c := vcord.client(&vcord.Config{
+	mut c := vcord.client(&config.Config{
 		token: conf.token
 		log_level: .info
 	})
@@ -47,12 +51,12 @@ fn on_message(mut b Bot, c &vcord.Client, msg &models.Message) {
 		match cmd {
 			'ping' {
 				println('channel: $msg.channel.id')
-				msg.channel.send('Pong!', vcord.MessageOpts{})
+				msg.channel.send('Pong!', models.MessageOpts{})
 			}
 			'user' {
 				mut u := &msg.member
 				println(u.user.tag())
-				msg.channel.send('', vcord.MessageOpts{
+				msg.channel.send('', models.MessageOpts{
 					embd: &models.Embed{
 						title: 'User info: ${u.user.tag()}'
 						fields: [
@@ -65,7 +69,7 @@ fn on_message(mut b Bot, c &vcord.Client, msg &models.Message) {
 				})
 			}
 			else {
-				msg.channel.send('no', vcord.MessageOpts{})
+				msg.channel.send('no', models.MessageOpts{})
 			}
 		}
 	}

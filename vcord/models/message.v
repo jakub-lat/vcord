@@ -1,6 +1,12 @@
 module models
 
-import vcord
+import vcord { Client }
+
+pub struct MessageOpts {
+pub:
+	embd    &Embed [json:"embed"] = voidptr(0)
+	tts     bool
+}
 
 pub enum MessageFlags {
 	crossposted
@@ -43,7 +49,7 @@ pub mut:
 	channel				Channel [skip]
 }
 
-fn (mut m Message) inject(mut c vcord.Client) {
+pub fn (mut m Message) inject(mut c Client) {
 	m.c = c
 	g := m.c.get_guild(m.guild_id) or {
 		c.logger.error('guild not available')
