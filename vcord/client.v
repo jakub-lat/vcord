@@ -1,5 +1,6 @@
 module vcord
 
+import time
 import json
 import eventbus
 import vcord.utils
@@ -11,7 +12,7 @@ pub struct Client {
 pub:
 	token string
 mut:
-	gw Gateway [skip]
+	manager &ShardingManager
 	guilds map[string]models.Guild
 	unavaliable_guilds map[string]models.UnavailableGuild
 	eb &eventbus.EventBus [skip]
@@ -22,7 +23,7 @@ mut:
 pub fn client(c config.Config) &Client {
 	mut l := utils.new_logger(c.log_level)
 	mut d := &Client {
-		gw: new_gateway(c, mut l)
+		manager: new_manager(l, c)
 		token: c.token
 		logger: l
 		ctx: &session.Ctx{
@@ -32,8 +33,8 @@ pub fn client(c config.Config) &Client {
 		eb: eventbus.new()
 	}
 
-	d.gw.events.subscriber.subscribe_method('on_dispatch', dispatch, d)
-	d.gw.events.subscriber.subscribe_method('on_ready', ready, d)
+	//d.gw.events.subscriber.subscribe_method('on_dispatch', dispatch, d)
+	//d.gw.events.subscriber.subscribe_method('on_ready', ready, d)
 	return d
 }
 
@@ -79,7 +80,13 @@ fn dispatch(mut c Client, packet &DiscordPacket, g &Gateway) {
 }
 
 pub fn (mut c Client) connect() {
-	c.gw.connect()
+	c.manager.spawn_shards()
+}
+
+pub fn (mut c Client) stay_connection() {
+	for true {
+		time.sleep_ms(1000)
+	}
 }
 
 pub fn (mut c Client) on(receiver voidptr, name string, handler fn(voidptr, voidptr, voidptr)) {

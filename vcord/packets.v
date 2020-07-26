@@ -47,7 +47,7 @@ pub:
 	properties 			IdentifyPacketProperties
 	compress			bool = false
 	large_threshold		int = 250
-	shard				[]int = [0, 1]
+	shard				[]u16 = [u16(0), u16(1)]
 	presence			models.Status
 	guild_subscriptions	bool = true
 }

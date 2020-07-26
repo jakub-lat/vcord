@@ -15,6 +15,7 @@ pub mut:
 	events				&eventbus.EventBus
 	op_events			&eventbus.EventBus
 	session_id			string
+	shard &Shard
 mut:
 	ws					&websocket.Client
 	logger				&utils.Logger
@@ -23,7 +24,7 @@ mut:
 	last_heartbeat		u64
 }
 
-pub fn new_gateway(c config.Config, mut l utils.Logger) &Gateway {
+pub fn new_gateway(s &Shard, c config.Config, mut l utils.Logger) &Gateway {
 	url := 'wss://gateway.discord.gg:443/?encoding=json&v=6'
 	mut d := &Gateway {
 		gateway: url
@@ -31,7 +32,8 @@ pub fn new_gateway(c config.Config, mut l utils.Logger) &Gateway {
 		ws: websocket.new(url)
 		events: eventbus.new()
 		op_events: eventbus.new()
-		logger: l
+		logger: l,
+		shard: s
 	}
 
 	d.ws.subscriber.subscribe_method('on_open', on_open, d)
@@ -47,10 +49,12 @@ pub fn new_gateway(c config.Config, mut l utils.Logger) &Gateway {
 	return d
 }
 
-pub fn (mut d Gateway) connect () {
-	d.logger.info('connecting...')
+pub fn (mut d Gateway) connect() {
 	d.ws.connect()
 	go d.ws.listen()
+}
+
+fn (mut d Gateway) init_heartbeat() {
 	for true {
 		time.sleep_ms(1)
 		if time.now().unix - d.last_heartbeat > d.heartbeat_interval {
@@ -74,7 +78,8 @@ pub fn (mut d Gateway) on_method(name string, handler eventbus.EventHandlerFn, r
 }
 
 fn on_open(mut d Gateway, ws &websocket.Client, _ voidptr) {
-	d.logger.info('websocket opened')
+	d.shard.status = ShardStatus.connected
+	d.logger.info('Shard #$d.shard.id was created')
 }
 
 fn on_message(mut d Gateway, msg &websocket.Message, ws &websocket.Client) {
@@ -112,16 +117,16 @@ fn on_hello(mut d Gateway, packet &DiscordPacket, ws &websocket.Client) {
 			browser: 'vcord',
 			device: 'vcord'
 		},
-		shard: [0,1],
+		shard: [d.shard.id, d.shard.manager.config.sharding.shards_count],
 		guild_subscriptions: true
 	}
 	encoded := identify_packet.encode()
 	d.ws.write(encoded.str, encoded.len, .text_frame)
-	
+	go d.init_heartbeat()
 }
 
 fn on_ready(mut d Gateway, packet &DiscordPacket, ws &websocket.Client) {
-	
+
 }
 
 fn on_dispatch(mut d Gateway, packet &DiscordPacket, ws &websocket.Client) {
@@ -135,9 +140,11 @@ fn on_dispatch(mut d Gateway, packet &DiscordPacket, ws &websocket.Client) {
 
 fn on_close(mut d Gateway, ws &websocket.Client, _ voidptr) {
 	d.logger.info('websocket closed')
+	d.shard.status = ShardStatus.disconnected
 }
 
 fn on_error(mut d Gateway, ws &websocket.Client, err &string) {
 	d.logger.error('websocket error:')
 	d.logger.error(err)
+	d.shard.status = ShardStatus.disconnected
 }

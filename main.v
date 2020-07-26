@@ -40,6 +40,8 @@ fn main () {
 	})*/
 	
 	client.connect()
+
+	client.stay_connection()
 }
 
 fn on_message(b &Bot, msg &models.Message, c &vcord.Client) {
