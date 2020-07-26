@@ -61,5 +61,5 @@ pub fn (mut m Message) inject(ctx &session.Ctx, g &Guild) {
 }
 
 pub fn (m &Message) delete() {
-	res := rest.delete(m.ctx, 'channels/$m.channel_id/messages/$m.id') or {return}
+	rest.delete(m.ctx, 'channels/$m.channel_id/messages/$m.id') or {return}
 }

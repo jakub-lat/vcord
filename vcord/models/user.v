@@ -1,10 +1,10 @@
 module models
 
-import json
 import vcord.session
-import vcord.rest
 
 pub struct User {
+mut:
+	ctx 			&session.Ctx [skip]
 pub:
 	id				string
 	username		string
@@ -21,6 +21,10 @@ pub:
 	public_flags	int = 0
 }
 
+pub fn (mut u User) inject(ctx &session.Ctx) {
+	u.ctx = ctx
+}
+
 pub fn (u &User) mention() string {
 	return '<@$u.id>'
 }
@@ -28,6 +32,7 @@ pub fn (u &User) mention() string {
 pub fn (u &User) tag() string {
 	return '$u.username#$u.discriminator'
 }
+
 
 struct GuildMember {
 mut:

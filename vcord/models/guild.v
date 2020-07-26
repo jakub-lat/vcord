@@ -12,9 +12,9 @@ pub:
 	member_count int
 mut:
 	ctx &session.Ctx [skip]
-pub mut:
 	channels []Channel
 	roles []Role
+pub mut:
 	members map[string]GuildMember [skip]
 }
 
