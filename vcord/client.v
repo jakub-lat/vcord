@@ -59,7 +59,7 @@ fn dispatch(mut c Client, packet &DiscordPacket, g &Gateway) {
 				c.logger.error('guild not available')
 				return
 			}
-			msg.inject(guild)
+			msg.inject(c.ctx, guild)
 			c.eb.publish('message', c, &msg)
 		}
 		'guild_create' {

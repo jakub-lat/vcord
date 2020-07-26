@@ -12,7 +12,7 @@ struct Config {
 	token string
 }
 struct Bot {
-	c cmds.Client
+	prefix string = 'v!'
 }
 
 fn main () {
@@ -31,16 +31,39 @@ fn main () {
 		log_level: .info
 	})
 	
-	mut cmd := cmds.new<Bot>(mut client, cmds.Config{
+	bot := Bot{}
+
+	client.on(&bot, 'message', on_message)
+
+	/*mut cmd := cmds.new<Bot>(mut client, cmds.Config{
 		prefix: 'v!'
-	})
+	})*/
 	
 	client.connect()
 }
 
+fn on_message(b &Bot, msg &models.Message, c &vcord.Client) {
+	if msg.content.starts_with(b.prefix) {
+		raw_args := msg.content.to_lower().substr(b.prefix.len, msg.content.len).split(' ')
+		cmd := raw_args[0]
+		mut args := []string{}
+		if args.len > 0 {
+			args = raw_args[1..]
+		}
+
+		match cmd {
+			'ping' {
+				msg.channel.send('Pong!', models.MessageOpts{})
+				msg.delete()
+			}
+			else {}
+		}
+	}
+}
 
 [command:"ping"]
 [description:"pong"]
 fn (b Bot) ping(ctx cmds.Ctx) {
-	ctx.channel.send('Pong!', models.MessageOpts{})
+	println('pong')
+	//ctx.channel.send('Pong!', models.MessageOpts{})
 }

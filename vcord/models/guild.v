@@ -54,7 +54,7 @@ pub fn (mut g Guild) get_member(id string) ?&GuildMember {
 		return &g.members[id]
 	} else {
 		r := rest.get(g.ctx, 'guilds/$g.id/members/$id') or {return none}
-		mut member := json.decode(GuildMember, r.text) or {return none}
+		mut member := json.decode(GuildMember, r) or {return none}
 		member.guild_id = g.id
 		member.inject(g.ctx)
 		g.members[member.user.id] = member
@@ -64,7 +64,7 @@ pub fn (mut g Guild) get_member(id string) ?&GuildMember {
 
 pub fn (mut g Guild) fetch_all_members() {
 	r := rest.get(g.ctx, 'guilds/$g.id/members') or {return}
-	mut members := json.decode([]GuildMember, r.text) or {return}
+	mut members := json.decode([]GuildMember, r) or {return}
 	for i, m in members {
 		members[i].guild_id = g.id
 		members[i].inject(g.ctx)

@@ -47,9 +47,3 @@ pub mut:
 fn (mut m GuildMember) inject(ctx &session.Ctx) {
 	m.ctx = ctx
 }
-
-pub fn get_user(ctx &session.Ctx, id string) ?User {
-	r := rest.get(ctx, 'users/$id') or {return none}
-	u := json.decode(User, r.text) or {return none}
-	return u
-}

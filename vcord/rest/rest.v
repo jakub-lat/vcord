@@ -1,39 +1,30 @@
 module rest
 
 import net.http
-import json
 
 import vcord.session
-
-pub fn delete_message(ctx &session.Ctx, cid string, mid string) ?http.Response {
-	return delete(ctx, "channels/${cid}/messages/${mid}")
-}
 
 pub struct RestBan {
 	reason				string
 	delete_message_days int	[json:'delete-message-days']
 }
-pub fn ban_member(ctx &session.Ctx, gid string, uid string, b RestBan) ?http.Response {
-	return put(ctx, "guilds/${gid}/bans/${uid}", json.encode(b))
-}
-
-pub fn get(ctx &session.Ctx, p string) ?http.Response {
+pub fn get(ctx &session.Ctx, p string) ?string {
 	return req(ctx, "get", p, "")
 }
 
-pub fn post(ctx &session.Ctx, p string, data string) ?http.Response {
+pub fn post(ctx &session.Ctx, p string, data string) ?string {
 	return req(ctx, "post", p, data)
 }
 
-pub fn delete(ctx &session.Ctx, p string) ?http.Response {
+pub fn delete(ctx &session.Ctx, p string) ?string {
 	return req(ctx, "delete", p, "")
 }
 
-pub fn put(ctx &session.Ctx, p string, data string) ?http.Response {
+pub fn put(ctx &session.Ctx, p string, data string) ?string {
 	return req(ctx, "put", p, "")
 }
 
-pub fn req(ctx &session.Ctx, method string, p string, data string) ?http.Response {
+pub fn req(ctx &session.Ctx, method string, p string, data string) ?string {
 	headers := {
 		"authorization": "Bot $ctx.token",
 		"content-type": 'application/json'
@@ -46,8 +37,8 @@ pub fn req(ctx &session.Ctx, method string, p string, data string) ?http.Respons
 
 	if res.status_code < 200 || res.status_code >= 300 {
 		ctx.logger.error('api responded with status code $res.status_code')
-		ctx.logger.error(res.text)
+		return error(res.text)
 	}
 
-	return res
+	return res.text
 }

@@ -43,6 +43,6 @@ pub fn (c &Channel) send(content string, msg MessageOpts) ?Message {
 	r := rest.post(c.ctx, "channels/$c.id/messages", s) or {
 		return error('request error')
 	}
-	res := json.decode(Message, r.text) or { return error('failed to parse') }
+	res := json.decode(Message, r) or { return error('failed to parse') }
 	return res
 }

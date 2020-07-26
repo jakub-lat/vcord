@@ -1,6 +1,7 @@
 module models
 
 import vcord.session
+import vcord.rest
 
 pub struct MessageOpts {
 pub:
@@ -49,11 +50,16 @@ pub mut:
 	channel				&Channel [skip]
 }
 
-pub fn (mut m Message) inject(g &Guild) {
+pub fn (mut m Message) inject(ctx &session.Ctx, g &Guild) {
+	m.ctx = ctx
 	m.guild = g
 	chn := m.guild.get_channel(m.channel_id) or {
 		m.ctx.logger.error('channel not found')
 		return
 	}
 	m.channel = chn
+}
+
+pub fn (m &Message) delete() {
+	res := rest.delete(m.ctx, 'channels/$m.channel_id/messages/$m.id') or {return}
 }

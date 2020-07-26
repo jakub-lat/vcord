@@ -5,7 +5,8 @@ import vcord.models
 
 struct Command {
 	name string
-	handler FunctionData
+	description string
+	method_name string
 }
 
 struct Client {
@@ -31,20 +32,25 @@ pub fn new<T>(mut client vcord.Client, config Config) Client {
 		config: config
 		bot: &T{}
 	}
-	println('initializing prefix: $config.prefix')
 
 	client.on(c, 'message', on_message)
 
 	$for method in T.methods {
 		mut name := ''
+		mut desc := ''
 		for attr in method.attrs {
 			if attr.starts_with('command:') {
-				name = attr.replace('command:', '').replace('"', '')
+				name = attr.replace('command:', '')
+			} else if(attr.starts_with('description:')) {
+				desc = attr.replace('description:', '')
 			}
 		}
 		if name != '' {
+			println('found command: $name')
 			cmd := Command{
 				name: name
+				description: desc
+				method_name: method.name
 				handler: method
 			}
 			/*if name !in c.commands {
@@ -59,7 +65,6 @@ pub fn new<T>(mut client vcord.Client, config Config) Client {
 fn on_message(c &Client, msg &models.Message, _ voidptr) {
 	prefix := c.config.prefix
 	if msg.content.starts_with(prefix) {
-		println('prefix ok')
 		raw_args := msg.content.to_lower().substr(prefix.len, msg.content.len).split(' ')
 		cmd_name := raw_args[0]
 		mut args := []string{}
@@ -67,12 +72,13 @@ fn on_message(c &Client, msg &models.Message, _ voidptr) {
 			args = raw_args[1..]
 		}
 		if cmd_name in c.commands {
+			println('invoking command $cmd_name')
 			cmd := c.commands[cmd_name]
-			handler := cmd.handler
+			method_name := cmd.method_name
 			ctx := Ctx{
 				channel: msg.channel
 			}
-			c.bot.$handler(ctx)
+			c.bot.$method_name(ctx)
 		}
 	}
 }
