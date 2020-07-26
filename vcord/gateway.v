@@ -73,11 +73,11 @@ pub fn (mut d Gateway) on_method(name string, handler eventbus.EventHandlerFn, r
 	d.events.subscriber.subscribe_method(name, handler, receiver)
 }
 
-fn on_open(mut d Gateway, ws websocket.Client, _ voidptr) {
+fn on_open(mut d Gateway, ws &websocket.Client, _ voidptr) {
 	d.logger.info('websocket opened')
 }
 
-fn on_message(mut d Gateway, ws websocket.Client, msg &websocket.Message) {
+fn on_message(mut d Gateway, msg &websocket.Message, ws &websocket.Client) {
 	match msg.opcode {
 		.text_frame {
 			packet := decode_packet(string(byteptr(msg.payload))) or {
@@ -86,8 +86,8 @@ fn on_message(mut d Gateway, ws websocket.Client, msg &websocket.Message) {
 			}
 			d.sequence = packet.sequence
 			match packet.op {
-				.dispatch { d.op_events.publish('on_dispatch', &ws, &packet) }
-				.hello { d.op_events.publish('on_hello', &ws, &packet) }
+				.dispatch { d.op_events.publish('on_dispatch', ws, &packet) }
+				.hello { d.op_events.publish('on_hello', ws, &packet) }
 				else {}
 			}
 		}
@@ -97,7 +97,7 @@ fn on_message(mut d Gateway, ws websocket.Client, msg &websocket.Message) {
 	}
 }
 
-fn on_hello(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {
+fn on_hello(mut d Gateway, packet &DiscordPacket, ws &websocket.Client) {
 	hello_data := decode_hello_packet(packet.d) or {
 		d.logger.warn('cannot decode packet:')
 		d.logger.warn(err)
@@ -120,11 +120,11 @@ fn on_hello(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {
 	
 }
 
-fn on_ready(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {
+fn on_ready(mut d Gateway, packet &DiscordPacket, ws &websocket.Client) {
 	
 }
 
-fn on_dispatch(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {	
+fn on_dispatch(mut d Gateway, packet &DiscordPacket, ws &websocket.Client) {
 	event := packet.event.to_lower()
 	if event == 'ready' {
 		ready_packet := decode_ready_packet(packet.d) or { return }
@@ -133,11 +133,11 @@ fn on_dispatch(mut d Gateway, ws websocket.Client, packet &DiscordPacket) {
 	d.events.publish('on_dispatch', d, packet)
 }
 
-fn on_close(mut d Gateway, ws websocket.Client, _ voidptr) {
+fn on_close(mut d Gateway, ws &websocket.Client, _ voidptr) {
 	d.logger.info('websocket closed')
 }
 
-fn on_error(mut d Gateway, ws websocket.Client, err string) {
+fn on_error(mut d Gateway, ws &websocket.Client, err &string) {
 	d.logger.error('websocket error:')
 	d.logger.error(err)
 }

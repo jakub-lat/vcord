@@ -1,6 +1,7 @@
 module vcord
 
 import json
+import eventbus
 import vcord.utils
 import vcord.config
 import vcord.models
@@ -13,7 +14,7 @@ mut:
 	gw Gateway [skip]
 	guilds map[string]models.Guild
 	unavaliable_guilds map[string]models.UnavailableGuild
-	evt utils.EventEmitter [skip]
+	eb &eventbus.EventBus [skip]
 	logger &utils.Logger [skip]
 	ctx &session.Ctx [skip]
 }
@@ -28,24 +29,24 @@ pub fn client(c config.Config) &Client {
 			token: c.token
 			logger: l
 		}
+		eb: eventbus.new()
 	}
-	d.evt = utils.new_event_emitter(d)
 
 	d.gw.events.subscriber.subscribe_method('on_dispatch', dispatch, d)
 	d.gw.events.subscriber.subscribe_method('on_ready', ready, d)
 	return d
 }
 
-fn ready(mut c Client, _ Gateway, packet &DiscordPacket) {
+fn ready(mut c Client, _ &Gateway, packet &DiscordPacket) {
 	r := decode_ready_packet(packet.d) or { return }
 	for g in r.guilds {	
 		c.unavaliable_guilds[g.id] = g
 	}
-	c.evt.emit('ready', &r)
+	c.eb.publish('ready', c, &r)
 	c.logger.info('bot ready')
 }
 
-fn dispatch(mut c Client, g Gateway, packet &DiscordPacket) {
+fn dispatch(mut c Client, packet &DiscordPacket, g &Gateway) {
 	event := packet.event.to_lower()
 	match event {
 		'ready' {
@@ -59,20 +60,20 @@ fn dispatch(mut c Client, g Gateway, packet &DiscordPacket) {
 				return
 			}
 			msg.inject(guild)
-			c.evt.emit('message', &msg)
+			c.eb.publish('message', c, &msg)
 		}
 		'guild_create' {
 			mut guild := json.decode(models.Guild, packet.d) or { return }
-			guild.inject(c)
+			guild.inject(c.ctx)
 			c.guilds[guild.id] = guild
 			if guild.id in c.unavaliable_guilds {
 				c.unavaliable_guilds.delete(guild.id)
 			} else {
-				c.evt.emit(event, &c.guilds[guild.id])
+				c.eb.publish(event, c, &c.guilds[guild.id])
 			}
 		}
 		else {
-			c.evt.emit(event, &packet)
+			c.eb.publish(event, c, &packet)
 		}
 	}
 }
@@ -82,7 +83,7 @@ pub fn (mut c Client) connect() {
 }
 
 pub fn (mut c Client) on(receiver voidptr, name string, handler fn(voidptr, voidptr, voidptr)) {
-	c.evt.subscribe(receiver, name, handler)
+	c.eb.subscriber.subscribe_method(name, handler, receiver)
 }
 
 pub fn (c Client) get_guild(id string) ?&models.Guild {

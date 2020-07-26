@@ -6,12 +6,14 @@ import json
 import vcord
 import vcord.config
 import vcord.models
+import vcord.cmds
 
-struct Bot {
-	prefix string
+struct Config {
+	token string
 }
-
-struct Config {token string}
+struct Bot {
+	c cmds.Client
+}
 
 fn main () {
 
@@ -24,51 +26,21 @@ fn main () {
 		return
 	}
 
-	mut c := vcord.client(&config.Config{
+	mut client := vcord.client(config.Config{
 		token: conf.token
 		log_level: .info
 	})
-	mut bot := Bot{
+	
+	mut cmd := cmds.new<Bot>(mut client, cmds.Config{
 		prefix: 'v!'
-	}
-	c.on(bot, 'message', on_message)
-	c.on(bot, 'ready', on_ready)
-	c.connect()
+	})
+	
+	client.connect()
 }
 
-fn on_ready(mut b Bot, c &vcord.Client, _ voidptr) {
-	println('Bot is ready!')
-}
 
-fn on_message(mut b Bot, c &vcord.Client, msg &models.Message) {
-	if msg.content.starts_with(b.prefix) {
-		raw_args := msg.content.to_lower().substr(b.prefix.len, msg.content.len).split(' ')
-		cmd := raw_args[0]
-		mut args := []string{}
-		if args.len > 0 {
-			args = raw_args[1..]
-		}
-		match cmd {
-			'ping' {
-				msg.channel.send('Pong!', models.MessageOpts{})
-			}
-			'user' {
-				mut u := &msg.member
-				msg.channel.send('', models.MessageOpts{
-					embd: &models.Embed{
-						title: 'User info: ${u.user.tag()}'
-						fields: [
-							models.EmbedField{
-								name: 'Nickname'
-								value: "test"
-							}
-						]
-					}
-				})
-			}
-			else {
-				msg.channel.send('no', models.MessageOpts{})
-			}
-		}
-	}
+[command:"ping"]
+[description:"pong"]
+fn (b Bot) ping(ctx cmds.Ctx) {
+	ctx.channel.send('Pong!', models.MessageOpts{})
 }

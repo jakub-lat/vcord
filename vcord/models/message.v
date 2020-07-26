@@ -45,8 +45,8 @@ mut:
 	ctx 				&session.Ctx [skip]
 pub mut:
 	member				GuildMember
-	guild 				Guild [skip]
-	channel				Channel [skip]
+	guild 				&Guild [skip]
+	channel				&Channel [skip]
 }
 
 pub fn (mut m Message) inject(g &Guild) {

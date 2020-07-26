@@ -40,10 +40,10 @@ pub fn (g Guild) get_channel(id string) ?&Channel {
 	return none
 }
 
-pub fn (g Guild) get_role(id string) ?Role {
+pub fn (g Guild) get_role(id string) ?&Role {
 	for r in g.roles {
 		if r.id == id {
-			return r
+			return &r
 		}
 	}
 	return none
